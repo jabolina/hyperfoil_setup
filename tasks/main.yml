@@ -77,7 +77,7 @@
 - name: Log Hyperfoil command
   shell: echo '{{ hyperfoil_cmd }}' > {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.cmd
 - name: Start Hyperfoil
-  shell: "{{ hyperfoil_cmd }} &> {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.log"
+  shell: "{{ hyperfoil_cmd | trim }} &> {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.log"
   async: 100000
   poll: 0
 - name: Wait for Hyperfoil to open port
