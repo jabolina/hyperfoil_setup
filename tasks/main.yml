@@ -83,4 +83,4 @@
   register: hyperfoil_status
   until: hyperfoil_status.status == 200
   delay: 1
-  retries: 10
+  retries: "{{ hyperfoil_controller_start_timeout }}"
