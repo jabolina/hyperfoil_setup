@@ -8,7 +8,7 @@
 - name: Guess version
   when: hyperfoil_distribution is defined and hyperfoil_version is undefined
   set_fact:
-    hyperfoil_version: "{{ hyperfoil_distribution | regex_replace('^.*/hyperfoil(?:-distribution)-([^/]*).zip$', '\\1') }}"
+    hyperfoil_version: "{{ hyperfoil_distribution | regex_replace('^.*/hyperfoil(?:-distribution)?-([^/]*).zip$', '\\1') }}"
 - name: Copy distribution
   when: hyperfoil_distribution is defined
   copy:
