@@ -1,0 +1,86 @@
+- name: Make sure Hyperfoil is down
+  include_role:
+    name: hyperfoil.hyperfoil_shutdown
+- name: Create driver dir
+  file:
+    path: '{{ hyperfoil_dir }}'
+    state: directory
+- name: Guess version
+  when: hyperfoil_distribution is defined and hyperfoil_version is undefined
+  set_fact:
+    hyperfoil_version: "{{ hyperfoil_distribution | regex_replace('^.*/hyperfoil(?:-distribution)-([^/]*).zip$', '\\1') }}"
+- name: Copy distribution
+  when: hyperfoil_distribution is defined
+  copy:
+    src: '{{ hyperfoil_distribution }}'
+    dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+- name: Get specific release
+  when: hyperfoil_distribution is undefined and hyperfoil_version is defined
+  block:
+  - name: Fetch release with given tag
+    uri:
+      url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases?tag_name={{ hyperfoil_version }}
+    register: hyperfoil_release_list
+  - name: Set download URL
+    set_fact:
+      hyperfoil_download_url: "{{ hyperfoil_release_list.json | json_query('[0].assets[0].browser_download_url') }}"
+- name: Get latest release
+  when: hyperfoil_distribution is undefined and hyperfoil_version is undefined
+  block:
+  - name: Fetch latest release
+    uri:
+      url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases/latest
+    register: hyperfoil_release
+  - name: Set download URL and version
+    set_fact:
+      hyperfoil_version: "{{ hyperfoil_release.json | json_query('tag_name') }}"
+      hyperfoil_download_url: "{{ hyperfoil_release.json | json_query('assets[0].browser_download_url') }}"
+- name: Download release
+  when: hyperfoil_distribution is undefined
+  get_url:
+    url: "{{ hyperfoil_download_url }}"
+    dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+- name: Unpack distribution
+  unarchive:
+    src: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+    dest: '{{ hyperfoil_dir }}'
+    remote_src: true
+    list_files: true
+  register: hyperfoil_unarchived
+- name: Set hyperfoil_controller_host
+  set_fact:
+    hyperfoil_controller_host: "{{ hostvars[groups[hyperfoil_controller_group][0]]['ansible_hostname'] }}"
+- name: Start Hyperfoil
+  shell: >
+    {{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin/{{ hyperfoil_role }}.sh
+    -Dio.hyperfoil.role={{ hyperfoil_role }}
+    {% if debug_port is defined %}
+    -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ debug_suspend | default("n", true) }},address={{ debug_port }}
+    {% endif %}
+    {% if libperfjava is defined %}
+    -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -agentpath:{{ libperfjava }}
+    {% endif %}
+    -ea
+    -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath={{ hyperfoil_dir }}
+    {% if hyperfoil_log_config is defined %}
+    -Dlog4j.configurationFile=file://{{ hyperfoil_log_config }}
+    {% endif %}
+    -Dio.hyperfoil.rootdir={{ hyperfoil_dir }}/workspace
+    -Dio.hyperfoil.controller.host={{ hyperfoil_controller_host }}
+    -Dio.hyperfoil.controller.port={{ hyperfoil_controller_port }}
+    -Djgroups.tcp.address={{ ansible_hostname }}
+    {% if hyperfoil_jfr is defined and hyperfoil_jfr %}
+    -XX:+UnlockCommercialFeatures -XX:+FlightRecorder
+    -XX:StartFlightRecording=compress=false,delay=10s,duration=24h,settings=profile,filename={{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.jfr
+    {% endif %}
+    &> {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.log
+  async: 100000
+  poll: 0
+- name: Wait for Hyperfoil to open port
+  when: hyperfoil_role == 'controller'
+  uri:
+    url: "http://{{ hyperfoil_controller_host }}:8090/"
+  register: hyperfoil_status
+  until: hyperfoil_status.status == 200
+  delay: 1
+  retries: 10
