@@ -80,11 +80,19 @@
   shell: "{{ hyperfoil_cmd | trim }} &> {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.log"
   async: 100000
   poll: 0
-- name: Wait for Hyperfoil to open port
+- name: Wait for Hyperfoil controller to open port
   when: hyperfoil_role == 'controller'
   uri:
-    url: "http://{{ hyperfoil_controller_host }}:8090/"
+    url: "http://{{ hyperfoil_controller_host }}:{{ hyperfoil_controller_port}}/"
   register: hyperfoil_status
   until: hyperfoil_status.status == 200
   delay: 1
   retries: "{{ hyperfoil_controller_start_timeout }}"
+- name: Wait for Hyperfoil controller to register this agent
+  uri:
+    url: "http://{{ hyperfoil_controller_host }}:{{ hyperfoil_controller_port }}/agents"
+    return_content: true
+  register: agents_json
+  until: agents_json.content | from_json | json_query('[].name') | select("equalto", ansible_fqdn)
+  delay: 1
+  retries: 30
