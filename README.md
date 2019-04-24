@@ -1,12 +1,12 @@
 Hyperfoil Setup
 =========
 
-Deploys Hyperfoil Controller and Agents
+Deploys Hyperfoil Controller
 
 Requirements
 ------------
 
-This role requires built [Hyperfoil](https://github.com/Hyperfoil/Hyperfoil).
+If you want to use unreleased version (from local machine) [Hyperfoil](https://github.com/Hyperfoil/Hyperfoil) must be already built.
 
 Dependencies
 ------------
@@ -18,7 +18,6 @@ Role Variables
 
 * `hyperfoil_distribution` (optional): location of Hyperfoil zip distribution (on local machine). When this is not set the distribution is downloaded from GitHub.
 * `hyperfoil_version` (optional): requested version. Defaults to latest version from GitHub.
-* `hyperfoil_role` (required): define if the role should setup `agent` or `controller`
 * `hyperfoil_dir` (optional): remote directory for Hyperfoil (unpacked distribution, logs...)
 * `hyperfoil_controller_group` (optional): Ansible group that hosts the controller. Default is `hyperofoil-controller`.
 * `hyperfoil_controller_port` (optional): Port on which Hyperfoil should listen

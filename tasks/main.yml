@@ -53,8 +53,7 @@
 - name: Create Hyperfoil command
   set_fact:
     hyperfoil_cmd: >
-        {{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin/{{ hyperfoil_role }}.sh
-        -Dio.hyperfoil.role={{ hyperfoil_role }}
+        {{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin/controller.sh
         {% if debug_port is defined %}
         -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ debug_suspend | default("n", true) }},address={{ debug_port }}
         {% endif %}
@@ -72,27 +71,18 @@
         -Djgroups.tcp.address={{ ansible_hostname }}
         {% if hyperfoil_jfr is defined and hyperfoil_jfr %}
         -XX:+UnlockCommercialFeatures -XX:+FlightRecorder
-        -XX:StartFlightRecording=compress=false,delay=10s,duration=24h,settings=profile,filename={{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.jfr
+        -XX:StartFlightRecording=compress=false,delay=10s,duration=24h,settings=profile,filename={{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.jfr
         {% endif %}
 - name: Log Hyperfoil command
-  shell: echo '{{ hyperfoil_cmd }}' > {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.cmd
+  shell: echo '{{ hyperfoil_cmd }}' > {{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.cmd
 - name: Start Hyperfoil
-  shell: "{{ hyperfoil_cmd | trim }} &> {{ hyperfoil_dir }}/{{ hyperfoil_role }}-{{ ansible_hostname }}.log"
+  shell: "{{ hyperfoil_cmd | trim }} &> {{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.log"
   async: 100000
   poll: 0
 - name: Wait for Hyperfoil controller to open port
-  when: hyperfoil_role == 'controller'
   uri:
     url: "http://{{ hyperfoil_controller_host }}:{{ hyperfoil_controller_port}}/"
   register: hyperfoil_status
   until: hyperfoil_status.status == 200
   delay: 1
   retries: "{{ hyperfoil_controller_start_timeout }}"
-- name: Wait for Hyperfoil controller to register this agent
-  uri:
-    url: "http://{{ hyperfoil_controller_host }}:{{ hyperfoil_controller_port }}/agents"
-    return_content: true
-  register: agents_json
-  until: agents_json.content | from_json | json_query('[].name') | select("equalto", ansible_fqdn)
-  delay: 1
-  retries: 30
