@@ -54,8 +54,11 @@
   set_fact:
     hyperfoil_cmd: >
         {{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin/controller.sh
-        {% if debug_port is defined %}
-        -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ debug_suspend | default("n", true) }},address={{ debug_port }}
+        {% if hyperfoil_controller_debug_port is defined %}
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ hyperfoil_controller_debug_suspend | default("n", true) }},address={{ hyperfoil_controller_debug_port }}
+        {% endif %}
+        {% if hyperfoil_agent_debug_port is defined %}
+        -Dio.hyperfoil.agent.debug.port={{ hyperfoil_agent_debug_port }}
         {% endif %}
         {% if libperfjava is defined %}
         -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -agentpath:{{ libperfjava }}
