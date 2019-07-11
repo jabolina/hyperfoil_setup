@@ -60,6 +60,9 @@
         {% if hyperfoil_agent_debug_port is defined %}
         -Dio.hyperfoil.agent.debug.port={{ hyperfoil_agent_debug_port }}
         {% endif %}
+        {% if hyperfoil_agent_debug_suspend is defined %}
+        -Dio.hyperfoil.agent.debug.suspend={{ hyperfoil_agent_debug_suspend }}
+        {% endif %}
         {% if libperfjava is defined %}
         -XX:+PreserveFramePointer -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -agentpath:{{ libperfjava }}
         {% endif %}
