@@ -1,4 +1,4 @@
-hyperfoil_controller_group: hyperfoil-controller
+hyperfoil_controller_group: hyperfoil_controller
 hyperfoil_controller_port: 8090
 hyperfoil_dir: /tmp/hyperfoil
 hyperfoil_controller_start_timeout: 15
