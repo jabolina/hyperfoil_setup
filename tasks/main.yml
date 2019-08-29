@@ -1,3 +1,11 @@
+- name: Validate that we're running on hyperfoil_controller
+  when: inventory_hostname not in groups[hyperfoil_controller_group]
+  fail:
+    msg: This node ({{ inventory_hostname }}) is not listed in group {{ hyperfoil_controller_group }}
+- name: Validate that there's only single controller
+  when: (groups[hyperfoil_controller_group] | length) != 1
+  fail:
+    msg: Only one controller is allowed.
 - name: Make sure Hyperfoil is down
   include_role:
     name: hyperfoil.hyperfoil_shutdown
@@ -47,9 +55,6 @@
     remote_src: true
     list_files: true
   register: hyperfoil_unarchived
-- name: Set hyperfoil_controller_host
-  set_fact:
-    hyperfoil_controller_host: "{{ hostvars[groups[hyperfoil_controller_group][0]]['ansible_hostname'] }}"
 - name: Create Hyperfoil command
   set_fact:
     hyperfoil_cmd: >
@@ -72,7 +77,7 @@
         -Dlog4j.configurationFile=file://{{ hyperfoil_log_config }}
         {% endif %}
         -Dio.hyperfoil.rootdir={{ hyperfoil_dir }}/workspace
-        -Dio.hyperfoil.controller.host={{ hyperfoil_controller_host }}
+        -Dio.hyperfoil.controller.host={{ ansible_hostname }}
         -Dio.hyperfoil.controller.port={{ hyperfoil_controller_port }}
         -Djgroups.tcp.address={{ ansible_hostname }}
         {% if hyperfoil_jfr is defined and (hyperfoil_jfr | bool) %}
@@ -87,7 +92,7 @@
   poll: 0
 - name: Wait for Hyperfoil controller to open port
   uri:
-    url: "http://{{ hyperfoil_controller_host }}:{{ hyperfoil_controller_port}}/"
+    url: "http://{{ ansible_hostname }}:{{ hyperfoil_controller_port}}/"
   register: hyperfoil_status
   until: hyperfoil_status.status == 200
   delay: 1
