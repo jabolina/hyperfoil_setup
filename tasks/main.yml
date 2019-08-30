@@ -13,52 +13,98 @@
   file:
     path: '{{ hyperfoil_dir }}'
     state: directory
-- name: Guess version
-  when: hyperfoil_distribution is defined and hyperfoil_version is undefined
-  set_fact:
-    hyperfoil_version: "{{ hyperfoil_distribution | regex_replace('^.*/hyperfoil(?:-distribution)?-([^/]*).zip$', '\\1') }}"
-- name: Copy distribution
+- name: Work with existing distribution
   when: hyperfoil_distribution is defined
-  copy:
-    src: '{{ hyperfoil_distribution }}'
-    dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
-- name: Get specific release
-  when: hyperfoil_distribution is undefined and hyperfoil_version is defined
   block:
-  - name: Fetch release with given tag
-    uri:
-      url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases?tag_name={{ hyperfoil_version }}
-    register: hyperfoil_release_list
-  - name: Set download URL
+  - name: Find info about distribution
+    stat:
+      path: "{{ hyperfoil_distribution }}"
+    register: hyperfoil_distribution_stat
+    failed_when: not hyperfoil_distribution_stat.stat.exists
+  - name: Check if distribution is directory
     set_fact:
-      hyperfoil_download_url: "{{ hyperfoil_release_list.json | json_query('[0].assets[0].browser_download_url') }}"
-- name: Get latest release
-  when: hyperfoil_distribution is undefined and hyperfoil_version is undefined
-  block:
-  - name: Fetch latest release
-    uri:
-      url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases/latest
-    register: hyperfoil_release
-  - name: Set download URL and version
+      hyperfoil_distribution_isdir: "{{ hyperfoil_distribution_stat.stat.isdir }}"
+  - name: Guess version from zip
+    when: hyperfoil_version is undefined and not hyperfoil_distribution_isdir
     set_fact:
-      hyperfoil_version: "{{ hyperfoil_release.json | json_query('tag_name') }}"
-      hyperfoil_download_url: "{{ hyperfoil_release.json | json_query('assets[0].browser_download_url') }}"
-- name: Download release
+      hyperfoil_version: "{{ hyperfoil_distribution | regex_replace('^.*/hyperfoil(?:-distribution)?-([^/]*).zip$', '\\1') }}"
+  - name: Guess version from dir
+    when: hyperfoil_version is undefined and hyperfoil_distribution_isdir
+    block:
+    - name: Find hyperfoil-core
+      find:
+        paths: "{{ hyperfoil_distribution }}/lib/"
+        patterns: "hyperfoil-core-*.jar"
+      register: hyperfoil_core_file
+      failed_when: hyperfoil_core_file.matched == 0
+    - name: Parse version
+      set_fact:
+        # hyperfoil_version must be set in the last task in the block as following ones will be ignored
+        hyperfoil_version_: "{{ hyperfoil_core_file.files[0].path | regex_replace('^.*/hyperfoil-core-([^/]*).jar$', '\\1') }}"
+    - name: Set version
+      set_fact:
+        hyperfoil_version: "{{ hyperfoil_version_ }}"
+        hyperfoil_bin_dir: "{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version_ }}/bin"
+  - name: Copy distribution as zip
+    when: not hyperfoil_distribution_isdir
+    copy:
+      src: '{{ hyperfoil_distribution }}'
+      dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+  - name: Create bin dir
+    when: hyperfoil_bin_dir is defined
+    file:
+      path: "{{ hyperfoil_bin_dir }}"
+      state: directory
+  - name: Copy distribution as directory
+    when: hyperfoil_distribution_isdir
+    synchronize:
+      src: '{{ hyperfoil_distribution }}/'
+      dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}'
+- name: Get release from GitHub
   when: hyperfoil_distribution is undefined
-  get_url:
-    url: "{{ hyperfoil_download_url }}"
-    dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+  block:
+  - name: Get specific release
+    when: hyperfoil_version is defined
+    block:
+    - name: Fetch release with given tag
+      uri:
+        url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases?tag_name={{ hyperfoil_version }}
+      register: hyperfoil_release_list
+    - name: Set download URL
+      set_fact:
+        hyperfoil_download_url: "{{ hyperfoil_release_list.json | json_query('[0].assets[0].browser_download_url') }}"
+  - name: Get latest release
+    when: hyperfoil_version is undefined
+    block:
+    - name: Fetch latest release
+      uri:
+        url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases/latest
+      register: hyperfoil_release
+    - name: Set download URL and version
+      set_fact:
+        hyperfoil_version: "{{ hyperfoil_release.json | json_query('tag_name') }}"
+        hyperfoil_download_url: "{{ hyperfoil_release.json | json_query('assets[0].browser_download_url') }}"
+  - name: Download release
+    get_url:
+      url: "{{ hyperfoil_download_url }}"
+      dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
 - name: Unpack distribution
-  unarchive:
-    src: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
-    dest: '{{ hyperfoil_dir }}'
-    remote_src: true
-    list_files: true
-  register: hyperfoil_unarchived
+  when: hyperfoil_distribution_isdir is undefined or not hyperfoil_distribution_isdir
+  block:
+  - name: Unzip file
+    unarchive:
+      src: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}.zip'
+      dest: '{{ hyperfoil_dir }}'
+      remote_src: true
+      list_files: true
+    register: hyperfoil_unarchived
+  - name: Set bin dir
+    set_fact:
+      hyperfoil_bin_dir: "{{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin"
 - name: Create Hyperfoil command
   set_fact:
     hyperfoil_cmd: >
-        {{ hyperfoil_dir }}/{{ hyperfoil_unarchived.files[0] }}/bin/controller.sh
+        {{ hyperfoil_bin_dir }}/controller.sh
         {% if hyperfoil_controller_debug_port is defined %}
         -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ hyperfoil_controller_debug_suspend | default("n", true) }},address={{ hyperfoil_controller_debug_port }}
         {% endif %}

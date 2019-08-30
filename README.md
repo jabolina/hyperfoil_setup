@@ -16,7 +16,7 @@ Depends on `hyperfoil-shutdown` role.
 Role Variables
 --------------
 
-* `hyperfoil_distribution` (optional): location of Hyperfoil zip distribution (on local machine). When this is not set the distribution is downloaded from GitHub.
+* `hyperfoil_distribution` (optional): location of Hyperfoil distribution zip or directory (on local machine). When this is not set the distribution is downloaded from GitHub.
 * `hyperfoil_version` (optional): requested version. Defaults to latest version from GitHub.
 * `hyperfoil_dir` (optional): remote directory for Hyperfoil (unpacked distribution, logs...)
 * `hyperfoil_controller_group` (optional): Ansible group that hosts the controller. Default is `hyperofoil-controller`.
