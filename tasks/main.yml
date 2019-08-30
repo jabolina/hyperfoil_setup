@@ -17,6 +17,8 @@
   when: hyperfoil_distribution is defined
   block:
   - name: Find info about distribution
+    delegate_to: localhost
+    delegate_facts: true
     stat:
       path: "{{ hyperfoil_distribution }}"
     register: hyperfoil_distribution_stat
