@@ -34,6 +34,8 @@
     when: hyperfoil_version is undefined and hyperfoil_distribution_isdir
     block:
     - name: Find hyperfoil-core
+      delegate_to: localhost
+      delegate_facts: true
       find:
         paths: "{{ hyperfoil_distribution }}/lib/"
         patterns: "hyperfoil-core-*.jar"
