@@ -22,6 +22,8 @@ Role Variables
 * `hyperfoil_controller_group` (optional): Ansible group that hosts the controller. Default is `hyperofoil-controller`.
 * `hyperfoil_controller_port` (optional): Port on which Hyperfoil should listen
 * `hyperfoil_controller_start_timeout` (optional): How long to wait for Hyperfoil to start, in seconds (default: 15).
+* `hyperfoil_controller_args` (optional): Extra arguments to pass to the controller JVM.
+* `hyperfoil_trigger_url` (optional): Configure controller to start runs from CI; this URL will be returned to CLI (with `BENCHMARK=my-benchmark&RUN_ID=xxxx` suffix) and CLI will perform a GET to that URL.
 * `hyperfoil_log_config` (optional): Log4j2 configuration file
 * `hyperfoil_jfr` (optional): Set to `true` to collect Flight Recordings (requires Oracle JDK)
 * `hyperfoil_controller_debug_port` (optional): If set, java will listen on this debug port.

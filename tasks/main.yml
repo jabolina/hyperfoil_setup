@@ -60,7 +60,7 @@
       path: "{{ hyperfoil_bin_dir }}"
       state: directory
   - name: Copy distribution as directory
-    when: hyperfoil_distribution_isdir
+    when: hyperfoil_distribution_isdir | bool
     synchronize:
       src: '{{ hyperfoil_distribution }}/'
       dest: '{{ hyperfoil_dir }}/hyperfoil-{{ hyperfoil_version }}'
@@ -134,6 +134,13 @@
         -XX:+UnlockCommercialFeatures -XX:+FlightRecorder
         -XX:StartFlightRecording=compress=false,delay=10s,duration=24h,settings=profile,filename={{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.jfr
         {% endif %}
+        {% if hyperfoil_trigger_url is defined %}
+        -Dio.hyperfoil.trigger.url={{ hyperfoil_trigger_url }}
+        {% endif %}
+        {% if hyperfoil_controller_args is defined %}
+        {{ hyperfoil_controller_args }}
+        {% endif %}
+        -Dio.hyperfoil.log.controller={{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.log
 - name: Log Hyperfoil command
   shell: echo '{{ hyperfoil_cmd }}' > {{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.cmd
 - name: Start Hyperfoil
