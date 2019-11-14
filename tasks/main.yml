@@ -129,7 +129,6 @@
         -Dio.hyperfoil.rootdir={{ hyperfoil_dir }}/workspace
         -Dio.hyperfoil.controller.host={{ ansible_hostname }}
         -Dio.hyperfoil.controller.port={{ hyperfoil_controller_port }}
-        -Djgroups.tcp.address={{ ansible_hostname }}
         {% if hyperfoil_jfr is defined and (hyperfoil_jfr | bool) %}
         -XX:+UnlockCommercialFeatures -XX:+FlightRecorder
         -XX:StartFlightRecording=compress=false,delay=10s,duration=24h,settings=profile,filename={{ hyperfoil_dir }}/hfc-{{ ansible_hostname }}.jfr
