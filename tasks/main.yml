@@ -72,11 +72,11 @@
     block:
     - name: Fetch release with given tag
       uri:
-        url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases?tag_name={{ hyperfoil_version }}
+        url: https://api.github.com/repos/Hyperfoil/Hyperfoil/releases/tags/release-{{ hyperfoil_version }}
       register: hyperfoil_release_list
     - name: Set download URL
       set_fact:
-        hyperfoil_download_url: "{{ hyperfoil_release_list.json | json_query('[0].assets[0].browser_download_url') }}"
+        hyperfoil_download_url: "{{ hyperfoil_release_list.json | json_query('assets[0].browser_download_url') }}"
   - name: Get latest release
     when: hyperfoil_version is undefined
     block:
